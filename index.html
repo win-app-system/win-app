@@ -65,6 +65,55 @@
             el.querySelector('.mini-bar').style.width = percent + '%';
             el.querySelector('.pct').innerText = percent;
         }
-    </script>
+    </script><script type="module">
+  // 1. Firebaseのライブラリを読み込む
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 2. 【ここを書き換え！】さっきコピーした自分の firebaseConfig を貼り付けてください
+  const firebaseConfig = {
+  apiKey: "AIzaSyBFZHjezGZVmpz8fYPnO-jfmnTiqZXXar8",
+  authDomain: "win-app-system.firebaseapp.com",
+  projectId: "win-app-system",
+  storageBucket: "win-app-system.firebasestorage.app",
+  messagingSenderId: "181797984111",
+  appId: "1:181797984111:web:159a0f2d29c8fb6cee3a9a"
+};
+
+
+  // 3. Firebaseを初期化
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // 4. チェックした時にデータを送る魔法（関数）
+  window.update = async function(id) {
+    const el = document.getElementById(id);
+    const boxes = el.querySelectorAll('input[type="checkbox"]');
+    const checked = Array.from(boxes).filter(b => b.checked).length;
+    const percent = Math.round((checked / boxes.length) * 100);
+    
+    // 画面のバーを動かす（これまでの機能）
+    el.querySelector('.mini-bar').style.width = percent + '%';
+    el.querySelector('.pct').innerText = percent;
+
+    // ★Firebaseにリアルタイム送信！
+    // 誰がどの商材を何％まで進めたかを保存します
+    try {
+      await setDoc(doc(db, "userProgress", "oshirp_member_1"), {
+        projectName: id,
+        progress: percent,
+        updateTime: serverTimestamp()
+      }, { merge: true });
+      console.log("データ送信成功！");
+    } catch (e) {
+      console.error("エラーが発生しました: ", e);
+    }
+  }
+
+  // 5. ドロワーを開閉する関数（ここも忘れずに）
+  window.toggleDrawer = function(id) {
+    document.getElementById(id).classList.toggle('active');
+  }
+</script>
 </body>
 </html>
