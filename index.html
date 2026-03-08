@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WIN×Ⅱ 進捗管理</title>
+    <style>
+        :root { --primary: #FF7F00; --primary-light: #FFF5E6; --bg: #FFF5E6; --text-main: #4A4A4A; --border: #EEDCC8; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; color: var(--text-main); min-height: 100vh; background: linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px), linear-gradient(0deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px), linear-gradient(135deg, #FFF5E6 0%, #FFEDD5 100%); background-size: 40px 40px, 40px 40px, cover; }
+        .drawer-item { width: 100%; max-width: 500px; margin: 0 auto 15px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(255,127,0,0.1); border: 1px solid var(--border); -webkit-tap-highlight-color: transparent; }
+        .drawer-header { padding: 18px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .drawer-title { font-weight: bold; font-size: 1rem; }
+        .drawer-status { font-size: 0.9rem; color: var(--primary); font-weight: bold; background: var(--primary-light); width: 55px; text-align: center; border-radius: 20px; margin-left: auto; margin-right: 10px; }
+        .drawer-content { display: none; padding: 15px 20px; background: #ffffff; border-top: 1px solid var(--border); }
+        .active .drawer-content { display: block; }
+        .task-row { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #F5F0E9; }
+        input[type="checkbox"] { width: 24px; height: 24px; margin-right: 15px; accent-color: var(--primary); }
+        .mini-progress { height: 6px; background: #EEDCC8; width: 100%; }
+        .mini-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.4s; }
+        .drawer-header::after { content: '▼'; font-size: 0.7rem; color: #D2B48C; margin-left: 10px; transition: transform 0.3s; }
+        .active .drawer-header::after { transform: rotate(180deg); color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div style="text-align:center; margin-bottom:20px;"><h1 style="color:var(--primary); font-size:1.4rem;">WIN×Ⅱ サービス進捗</h1></div>
+
+    <div class="drawer-item" id="item1">
+        <div class="drawer-header" onclick="toggleDrawer('item1')">
+            <span class="drawer-title">1. ベビープラネット</span>
+            <span class="drawer-status"><span class="pct">0</span>%</span>
+        </div>
+        <div class="mini-progress"><div class="mini-bar"></div></div>
+        <div class="drawer-content">
+            <div class="task-row"><input type="checkbox" id="t1-1" onchange="update('item1')"><label for="t1-1">ブログを見る</label></div>
+            <div class="task-row"><input type="checkbox" id="t1-2" onchange="update('item1')"><label for="t1-2">相談を申し込む</label></div>
+        </div>
+    </div>
+
+    <div class="drawer-item" id="item2">
+        <div class="drawer-header" onclick="toggleDrawer('item2')">
+            <span class="drawer-title">2. 保険見直しラボ</span>
+            <span class="drawer-status"><span class="pct">0</span>%</span>
+        </div>
+        <div class="mini-progress"><div class="mini-bar"></div></div>
+        <div class="drawer-content">
+            <div class="task-row"><input type="checkbox" id="t2-1" onchange="update('item2')"><label for="t2-1">ページを確認</label></div>
+        </div>
+    </div>
+
+    <script>
+        /* iPhoneでも確実に動くように記述 */
+        function toggleDrawer(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('active')) {
+                el.classList.remove('active');
+            } else {
+                el.classList.add('active');
+            }
+        }
+        function update(id) {
+            const el = document.getElementById(id);
+            const boxes = el.querySelectorAll('input[type="checkbox"]');
+            const checked = Array.from(boxes).filter(b => b.checked).length;
+            const percent = Math.round((checked / boxes.length) * 100);
+            el.querySelector('.mini-bar').style.width = percent + '%';
+            el.querySelector('.pct').innerText = percent;
+        }
+    </script>
+</body>
+</html>
