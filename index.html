@@ -11,26 +11,32 @@
         input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #DDD; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         .task-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         input[type="checkbox"] { width: 25px; height: 25px; margin-right: 15px; accent-color: var(--primary); cursor: pointer; }
-        h2 { color: var(--primary); border-left: 5px solid var(--primary); padding-left: 10px; font-size: 20px; }
-        #loading { color: #888; font-size: 12px; text-align: center; display: none; }
+        h2 { color: var(--primary); border-left: 5px solid var(--primary); padding-left: 10px; font-size: 18px; margin-top: 0; }
+        #loading { color: #888; font-size: 12px; text-align: center; display: none; padding: 10px; }
+        .header-logo { text-align: center; margin-bottom: 25px; padding-top: 10px; }
     </style>
 </head>
 <body>
-    <div style="text-align: center; margin-bottom: 25px; padding-top: 10px;">
-    <img src="logo.svg" width="80" height="80" style="display: block; margin: 0 auto 10px;">
-    <h1 style="color: var(--primary); margin: 0; font-size: 22px;">WIN×Ⅱ 進捗管理</h1>
-</div>
 
-    <h2>🛠 ユーザー・商材設定</h2>
+    <div class="header-logo">
+        <img src="logo.svg" width="80" height="80" style="display: block; margin: 0 auto 10px;">
+        <h1 style="color: var(--primary); margin: 0; font-size: 22px;">WIN×Ⅱ 進捗管理</h1>
+    </div>
+
     <div class="config-section">
         <label>表示名（お名前）</label>
-        <input type="text" id="userName" placeholder="例：ルンバ" onchange="renderTasks()">
+        <input type="text" id="userName" placeholder="例：菅具 大城" onchange="renderTasks()">
         
         <label>対象サービスを選択</label>
         <select id="serviceName" onchange="renderTasks()">
+            <option value="ネットビジョンアカデミー">ネットビジョンアカデミー</option>
+            <option value="WEBコーチ">WEBコーチ</option>
+            <option value="SakiYomiスクール">SakiYomiスクール</option>
+            <option value="リゾートバイトダイブ">リゾートバイトダイブ</option>
+            <option value="債務整理サポートサービス">債務整理サポートサービス</option>
+            <option value="探偵の浮気調査：街角">探偵の浮気調査：街角</option>
+            <option value="探偵の浮気調査：ALG">探偵の浮気調査：ALG</option>
             <option value="ベビープラネット">ベビープラネット</option>
-            <option value="エンジニアカレッジ">エンジニアカレッジ</option>
-            <option value="LINE登録案件">LINE登録案件</option>
         </select>
     </div>
 
@@ -53,13 +59,18 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 大城様からいただいた商材データをすべて反映
         const taskData = {
-            "ベビープラネット": ["資料請求完了", "電話対応済み", "面談予約完了", "成約"],
-            "エンジニアカレッジ": ["無料カウンセリング予約", "オンライン説明会参加", "受講開始", "就職決定"],
-            "LINE登録案件": ["LINE友達追加", "アンケート回答", "特典受け取り"]
+            "ネットビジョンアカデミー": ["ブログを見る", "サービスページ進む", "サービスを理解する", "無料カウンセリングを送信", "電話対応", "オンライン説明会を受ける"],
+            "WEBコーチ": ["ブログを見る", "サービスページ進む", "サービスを理解する", "無料カウンセリングを送信", "電話対応", "無料カウンセリングを受ける"],
+            "SakiYomiスクール": ["ブログを見る", "サービスページ進む", "サービスを理解する", "LINE友達追加完了"],
+            "リゾートバイトダイブ": ["ブログを見る", "サービスページ進む", "サービスを理解する", "マイページの作成完了", "初回カウンセリングを受ける"],
+            "債務整理サポートサービス": ["ブログを見る", "サービスページ進む", "サービスを理解する", "メール問い合わせ完了", "折り返し電話対応完了"],
+            "探偵の浮気調査：街角": ["ブログを見る", "サービスページ進む", "サービスを理解する", "浮気調査の問い合わせアンケ完了", "折り返し電話対応完了"],
+            "探偵の浮気調査：ALG": ["ブログを見る", "サービスページ進む", "サービスを理解する", "浮気調査の問い合わせ完了", "折り返し電話対応完了"],
+            "ベビープラネット": ["ブログを見る", "サービスページ進む", "サービスを理解する", "無料相談予約完了", "折り返し電話対応完了"]
         };
 
-        // 画面にタスクを表示し、Firebaseからデータを読み込む
         window.renderTasks = async () => {
             const name = document.getElementById('userName').value;
             const service = document.getElementById('serviceName').value;
@@ -70,21 +81,20 @@
             localStorage.setItem('win2_service', service);
             
             if (!name) {
-                container.innerHTML = "<p style='color:red;'>お名前を入力してください</p>";
+                container.innerHTML = "<p style='color:red; text-align:center;'>お名前を入力してください</p>";
                 return;
             }
 
             loader.style.display = "block";
             const tasks = taskData[service] || [];
             
-            // Firebaseからこのユーザーのこの商材のデータを取得
             const docRef = doc(db, "progress_" + service, name);
             const docSnap = await getDoc(docRef);
             const savedData = docSnap.exists() ? docSnap.data() : {};
 
-            container.innerHTML = `<h2>📋 ${service} の進捗</h2>` + 
+            container.innerHTML = `<h2>📋 ${service}</h2>` + 
                 tasks.map(task => {
-                    const checked = savedData[task] ? "checked" : ""; // 保存されていればチェックを入れる
+                    const checked = savedData[task] ? "checked" : "";
                     return `
                         <div class="task-card">
                             <input type="checkbox" ${checked} onchange="updateProgress('${task}', this.checked)"> ${task}
@@ -108,13 +118,13 @@
                     lastUpdate: serverTimestamp()
                 }, { merge: true });
             } catch (e) {
-                console.error("エラー: ", e);
+                console.error("Firebase送信エラー: ", e);
             }
         };
 
         window.onload = () => {
             document.getElementById('userName').value = localStorage.getItem('win2_user') || "";
-            document.getElementById('serviceName').value = localStorage.getItem('win2_service') || "ベビープラネット";
+            document.getElementById('serviceName').value = localStorage.getItem('win2_service') || "ネットビジョンアカデミー";
             renderTasks();
         };
     </script>
