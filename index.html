@@ -6,78 +6,113 @@
     <title>WIN×Ⅱ 進捗管理システム</title>
     <style>
         :root { --primary: #FF7F00; --bg: #FFF5E6; --text: #4A4A4A; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 600px; margin: auto; }
         .config-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #DDD; border-radius: 6px; box-sizing: border-box; }
-        .task-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; }
-        input[type="checkbox"] { width: 25px; height: 25px; margin-right: 15px; accent-color: var(--primary); }
-        h2 { color: var(--primary); border-left: 5px solid var(--primary); padding-left: 10px; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #DDD; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        .task-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        input[type="checkbox"] { width: 25px; height: 25px; margin-right: 15px; accent-color: var(--primary); cursor: pointer; }
+        h2 { color: var(--primary); border-left: 5px solid var(--primary); padding-left: 10px; font-size: 20px; }
+        .status-msg { font-size: 12px; color: #888; text-align: right; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <h2>🛠 ユーザー設定</h2>
+    <h2>🛠 ユーザー・商材設定</h2>
     <div class="config-section">
-    <label>表示名（お名前）</label>
-    <input type="text" id="userName" placeholder="例：菅具 大城" onchange="saveConfig()">
-    
-    <label>対象サービス</label>
-    <select id="serviceName" onchange="renderTasks()">
-        <option value="ベビープラネット">ベビープラネット</option>
-        <option value="エンジニアカレッジ">エンジニアカレッジ</option>
-        <option value="LINE登録案件">LINE登録案件</option>
-    </select>
-</div>
-
-<div id="taskList"></div>
-
-<script type="module">
-    // --- ここにFirebase設定を貼り付け ---
-    const firebaseConfig = {
-  apiKey: "AIzaSyBFZHjezGZVmpz8fYPnO-jfmnTiqZXXar8",
-  authDomain: "win-app-system.firebaseapp.com",
-  projectId: "win-app-system",
-  storageBucket: "win-app-system.firebasestorage.app",
-  messagingSenderId: "181797984111",
-  appId: "1:181797984111:web:159a0f2d29c8fb6cee3a9a"
-};
-
-    // ----------------------------------
-
-    // 商材ごとのタスク定義（大城様が自由に変更・追加できます）
-    const taskData = {
-        "ベビープラネット": ["資料請求完了", "電話対応済み", "面談予約完了"],
-        "エンジニアカレッジ": ["無料カウンセリング", "オンライン説明会参加", "受講開始"],
-        "LINE登録案件": ["LINE友達追加", "アンケート回答"]
-    };
-
-    // 画面にタスクを表示する魔法の関数
-    window.renderTasks = () => {
-        const service = document.getElementById('serviceName').value;
-        const container = document.getElementById('taskList');
-        const tasks = taskData[service] || [];
+        <label>表示名（お名前）</label>
+        <input type="text" id="userName" placeholder="例：菅具 大城" onchange="saveConfig()">
         
-        container.innerHTML = `<h2>📋 ${service} の進捗</h2>` + 
-            tasks.map(task => `
-                <div class="task-card">
-                    <input type="checkbox" onchange="updateProgress('${task}', this.checked)"> ${task}
-                </div>
-            `).join('');
-        
-        saveConfig();
-    };
+        <label>対象サービスを選択</label>
+        <select id="serviceName" onchange="renderTasks()">
+            <option value="ベビープラネット">ベビープラネット</option>
+            <option value="エンジニアカレッジ">エンジニアカレッジ</option>
+            <option value="LINE登録案件">LINE登録案件</option>
+        </select>
+        <p class="status-msg">※サービスを切り替えるとタスクが変わります</p>
+    </div>
 
-    // Firebase送信関数（前回のものと同じ）
-    window.updateProgress = async (taskName, isChecked) => {
-        // ...（中略：前回の送信処理）
-    };
+    <div id="taskList">
+        </div>
 
-    window.onload = () => {
-        // 保存データの復元とタスクの初回表示
-        document.getElementById('userName').value = localStorage.getItem('win2_user') || "";
-        document.getElementById('serviceName').value = localStorage.getItem('win2_service') || "ベビープラネット";
-        renderTasks(); 
-    };
-</script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 大城様からいただいた合言葉をセット済みです
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFZHjezGZVmpz8fYPnO-jfmnTiqZXXar8",
+            authDomain: "win-app-system.firebaseapp.com",
+            projectId: "win-app-system",
+            storageBucket: "win-app-system.firebasestorage.app",
+            messagingSenderId: "181797984111",
+            appId: "1:181797984111:web:159a0f2d29c8fb6cee3a9a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 商材ごとのタスク定義（ここで100ジャンルまで管理可能！）
+        const taskData = {
+            "ベビープラネット": ["資料請求完了", "電話対応済み", "面談予約完了", "成約"],
+            "エンジニアカレッジ": ["無料カウンセリング予約", "オンライン説明会参加", "受講開始", "就職決定"],
+            "LINE登録案件": ["LINE友達追加", "アンケート回答", "特典受け取り"]
+        };
+
+        // 画面にタスクを表示する関数
+        window.renderTasks = () => {
+            const service = document.getElementById('serviceName').value;
+            const container = document.getElementById('taskList');
+            const tasks = taskData[service] || [];
+            
+            container.innerHTML = `<h2>📋 ${service} の進捗</h2>` + 
+                tasks.map(task => `
+                    <div class="task-card">
+                        <input type="checkbox" onchange="updateProgress('${task}', this.checked)"> ${task}
+                    </div>
+                `).join('');
+            
+            saveConfig();
+        };
+
+        // 設定の保存
+        window.saveConfig = () => {
+            const name = document.getElementById('userName').value;
+            const service = document.getElementById('serviceName').value;
+            localStorage.setItem('win2_user', name);
+            localStorage.setItem('win2_service', service);
+        };
+
+        // Firebaseへの送信
+        window.updateProgress = async (taskName, isChecked) => {
+            const userName = document.getElementById('userName').value;
+            const serviceName = document.getElementById('serviceName').value;
+            
+            if(!userName) {
+                alert("最初にお名前を入力してください。代表が誰の進捗か判別できなくなります。");
+                return;
+            }
+
+            const collectionPath = "progress_" + serviceName;
+            
+            try {
+                await setDoc(doc(db, collectionPath, userName), {
+                    userName: userName,
+                    serviceName: serviceName,
+                    [taskName]: isChecked,
+                    lastUpdate: serverTimestamp()
+                }, { merge: true });
+                console.log(serviceName + "の進捗を更新しました！");
+            } catch (e) {
+                console.error("送信エラー: ", e);
+            }
+        };
+
+        // 読み込み時の復元
+        window.onload = () => {
+            document.getElementById('userName').value = localStorage.getItem('win2_user') || "";
+            document.getElementById('serviceName').value = localStorage.getItem('win2_service') || "ベビープラネット";
+            renderTasks();
+        };
+    </script>
 </body>
 </html>
