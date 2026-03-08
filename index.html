@@ -12,7 +12,7 @@
         .task-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         input[type="checkbox"] { width: 25px; height: 25px; margin-right: 15px; accent-color: var(--primary); cursor: pointer; }
         h2 { color: var(--primary); border-left: 5px solid var(--primary); padding-left: 10px; font-size: 20px; }
-        .status-msg { font-size: 12px; color: #888; text-align: right; margin-top: 5px; }
+        #loading { color: #888; font-size: 12px; text-align: center; display: none; }
     </style>
 </head>
 <body>
@@ -20,7 +20,7 @@
     <h2>🛠 ユーザー・商材設定</h2>
     <div class="config-section">
         <label>表示名（お名前）</label>
-        <input type="text" id="userName" placeholder="例：菅具 大城" onchange="saveConfig()">
+        <input type="text" id="userName" placeholder="例：菅具 大城" onchange="renderTasks()">
         
         <label>対象サービスを選択</label>
         <select id="serviceName" onchange="renderTasks()">
@@ -28,17 +28,15 @@
             <option value="エンジニアカレッジ">エンジニアカレッジ</option>
             <option value="LINE登録案件">LINE登録案件</option>
         </select>
-        <p class="status-msg">※サービスを切り替えるとタスクが変わります</p>
     </div>
 
-    <div id="taskList">
-        </div>
+    <div id="loading">データ読み込み中...</div>
+    <div id="taskList"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 大城様からいただいた合言葉をセット済みです
         const firebaseConfig = {
             apiKey: "AIzaSyBFZHjezGZVmpz8fYPnO-jfmnTiqZXXar8",
             authDomain: "win-app-system.firebaseapp.com",
@@ -51,63 +49,65 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 商材ごとのタスク定義（ここで100ジャンルまで管理可能！）
         const taskData = {
             "ベビープラネット": ["資料請求完了", "電話対応済み", "面談予約完了", "成約"],
             "エンジニアカレッジ": ["無料カウンセリング予約", "オンライン説明会参加", "受講開始", "就職決定"],
             "LINE登録案件": ["LINE友達追加", "アンケート回答", "特典受け取り"]
         };
 
-        // 画面にタスクを表示する関数
-        window.renderTasks = () => {
-            const service = document.getElementById('serviceName').value;
-            const container = document.getElementById('taskList');
-            const tasks = taskData[service] || [];
-            
-            container.innerHTML = `<h2>📋 ${service} の進捗</h2>` + 
-                tasks.map(task => `
-                    <div class="task-card">
-                        <input type="checkbox" onchange="updateProgress('${task}', this.checked)"> ${task}
-                    </div>
-                `).join('');
-            
-            saveConfig();
-        };
-
-        // 設定の保存
-        window.saveConfig = () => {
+        // 画面にタスクを表示し、Firebaseからデータを読み込む
+        window.renderTasks = async () => {
             const name = document.getElementById('userName').value;
             const service = document.getElementById('serviceName').value;
+            const container = document.getElementById('taskList');
+            const loader = document.getElementById('loading');
+            
             localStorage.setItem('win2_user', name);
             localStorage.setItem('win2_service', service);
-        };
-
-        // Firebaseへの送信
-        window.updateProgress = async (taskName, isChecked) => {
-            const userName = document.getElementById('userName').value;
-            const serviceName = document.getElementById('serviceName').value;
             
-            if(!userName) {
-                alert("最初にお名前を入力してください。代表が誰の進捗か判別できなくなります。");
+            if (!name) {
+                container.innerHTML = "<p style='color:red;'>お名前を入力してください</p>";
                 return;
             }
 
-            const collectionPath = "progress_" + serviceName;
+            loader.style.display = "block";
+            const tasks = taskData[service] || [];
             
+            // Firebaseからこのユーザーのこの商材のデータを取得
+            const docRef = doc(db, "progress_" + service, name);
+            const docSnap = await getDoc(docRef);
+            const savedData = docSnap.exists() ? docSnap.data() : {};
+
+            container.innerHTML = `<h2>📋 ${service} の進捗</h2>` + 
+                tasks.map(task => {
+                    const checked = savedData[task] ? "checked" : ""; // 保存されていればチェックを入れる
+                    return `
+                        <div class="task-card">
+                            <input type="checkbox" ${checked} onchange="updateProgress('${task}', this.checked)"> ${task}
+                        </div>
+                    `;
+                }).join('');
+            
+            loader.style.display = "none";
+        };
+
+        window.updateProgress = async (taskName, isChecked) => {
+            const userName = document.getElementById('userName').value;
+            const serviceName = document.getElementById('serviceName').value;
+            if(!userName) return;
+
             try {
-                await setDoc(doc(db, collectionPath, userName), {
+                await setDoc(doc(db, "progress_" + serviceName, userName), {
                     userName: userName,
                     serviceName: serviceName,
                     [taskName]: isChecked,
                     lastUpdate: serverTimestamp()
                 }, { merge: true });
-                console.log(serviceName + "の進捗を更新しました！");
             } catch (e) {
-                console.error("送信エラー: ", e);
+                console.error("エラー: ", e);
             }
         };
 
-        // 読み込み時の復元
         window.onload = () => {
             document.getElementById('userName').value = localStorage.getItem('win2_user') || "";
             document.getElementById('serviceName').value = localStorage.getItem('win2_service') || "ベビープラネット";
